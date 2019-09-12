@@ -1,0 +1,78 @@
+import groovy.json.JsonSlurper
+
+pipeline {
+   agent any
+
+   environment {
+
+       // Setup variables for the deployment
+       od_stack = "brc-3775"
+       od2_environment = "myproject"
+       od2_url = "https://api-brc-3775.onehippo.io"
+
+   }
+
+   stages {
+       stage('Test Connection') {
+           steps {
+               script {
+                   // Login to get the access token
+                   echo "Login to OD2 and obtains token:"
+                   withCredentials([usernamePassword(credentialsId: 'brcloud_admin', passwordVariable: 'od2_password', usernameVariable: 'od2_username')]) {
+                       def json = "{\"username\": \"${od2_username}\", \"password\": \"${od2_password}\"}"
+                       loginResult = post("${od2_url}/v3/authn/access_token", json)
+                   }
+                   echo "Login result ${loginResult}"
+                   String access_token = "Bearer " + parseJson(loginResult).access_token
+
+                   // Get the environment ID
+                   echo "Get the environments"
+                   environments = get("${od2_url}/v3/environments/", access_token)
+
+                   // We require an exising environment. Alternative is to delete/create one
+                   def environmentID = getEnvironmentID(environments, od2_environment)
+                   echo "Environments result: ${environments}"
+                   echo "Environment ID: ${environmentID}"
+               }
+           }
+       }
+   }
+}
+
+@NonCPS
+private String get(url, access_token = null) {
+   return curl("GET", url, access_token)
+}
+
+@NonCPS
+private String post(url, json, access_token = null) {
+   return curl("POST", url, access_token, json)
+}
+
+@NonCPS
+private String curl(method, url, access_token, json = null, fileName = null, file = null, extraParams = null, contentType = "application/json") {
+   return sh(script: "curl ${extraParams?:""} \
+           -X ${method} '${url}' \
+           ${access_token?"-H 'Authorization: ${access_token}'":""} \
+           -H 'Content-Type: ${contentType}' \
+           ${json?"-d '${json}'":""} \
+           ${(fileName && file)?"-F '${fileName}=@${file}'":""}",
+           returnStdout: true)
+}
+
+@NonCPS
+def parseJson(text) {
+   return new JsonSlurper().parseText(text)
+}
+
+@NonCPS
+def getEnvironmentID(environments, od2_environment) {
+   result = null
+   parseJson(environments).items.each() { env ->
+       if(env.name.toString() == od2_environment) {
+           result = env.id
+       }
+   }
+   return result
+}
+
