@@ -10,7 +10,7 @@ pipeline {
        od_stack = "brc-3775"
        od2_url = "https://api-${od_stack}.onehippo.io"
 
-       eployed_site = "https://${od2_environment}-${od_stack}.onehippo.io/site/"
+       deployed_site = "https://${od2_environment}-${od_stack}.onehippo.io/site/"
        deployed_cms = "https://${od2_environment}-${od_stack}.onehippo.io/cms/"
 
    }
