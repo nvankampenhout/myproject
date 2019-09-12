@@ -87,7 +87,7 @@ pipeline {
 
                    echo "Get the environments"
                    environments = get("${od2_url}/v3/environments/", access_token)
-                   echo "environemts: ${environments}"
+                   echo "environments: ${environments}"
 
                    def environmentID = getEnvironmentID(environments, od2_environment)
                    echo "Environment ID: ${environmentID}"
