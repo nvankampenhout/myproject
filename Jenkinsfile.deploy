@@ -8,6 +8,7 @@ pipeline {
 
        // Setup variables for the deployment
        od_stack = "brc-3775"
+       od2_environment = "myproject"
        od2_url = "https://api-${od_stack}.onehippo.io"
 
        deployed_site = "https://${od2_environment}-${od_stack}.onehippo.io/site/"
