@@ -80,6 +80,10 @@ pipeline {
        stage('Deploy') {
            steps{
                script{
+                   withCredentials([usernamePassword(credentialsId: 'brCloud_admin', passwordVariable: 'od2_password', usernameVariable: 'od2_username')]) {
+                       access_token = login("${od2_url}/v3/authn/access_token", od2_username, od2_password)
+                   }
+
                    echo "Get the environments"
                    environments = get("${od2_url}/v3/environments/", access_token)
                    echo "environemts: ${environments}"
