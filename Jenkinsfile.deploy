@@ -83,6 +83,7 @@ pipeline {
        stage('Deploy') {
            steps{
                script{
+                   // refresh access token in case it expired while uploading
                    access_token = refresh_token("${od2_url}/v3/authn/refresh_token")
 
                    echo "Get the environments"
@@ -115,10 +116,9 @@ private String login(url, od2_username, od2_password) {
 private String refresh_token(url) {
    echo "Refresh login token:"
    def json = "{\"grant_type\": \"refresh_token\", \"refresh_token\": \"${refresh_token}\"}"
-   loginResult = post(url, json)
-   echo "Login result ${loginResult}"
-   refresh_token = parseJson(loginResult).refresh_token;
-   return "Bearer " + parseJson(loginResult).access_token;
+   refreshResult = post(url, json)
+   echo "Refresh result ${refreshResult}"
+   return "Bearer " + parseJson(refreshResult).access_token;
 }
 
 
