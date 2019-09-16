@@ -1,7 +1,5 @@
 import groovy.json.JsonSlurper
 
-def refresh_token
-
 pipeline {
    agent any
 
@@ -83,8 +81,9 @@ pipeline {
        stage('Deploy') {
            steps{
                script{
-                   // refresh access token in case it expired while uploading
-                   access_token = refresh_token("${od2_url}/v3/authn/refresh_token")
+                   withCredentials([usernamePassword(credentialsId: 'brCloud_admin', passwordVariable: 'od2_password', usernameVariable: 'od2_username')]) {
+                       access_token = login("${od2_url}/v3/authn/access_token", od2_username, od2_password)
+                   }
 
                    echo "Get the environments"
                    environments = get("${od2_url}/v3/environments/", access_token)
@@ -112,15 +111,6 @@ private String login(url, od2_username, od2_password) {
    refresh_token = parseJson(loginResult).refresh_token;
    return "Bearer " + parseJson(loginResult).access_token;
 }
-
-private String refresh_token(url) {
-   echo "Refresh login token:"
-   def json = "{\"grant_type\": \"refresh_token\", \"refresh_token\": \"${refresh_token}\"}"
-   refreshResult = post(url, json)
-   echo "Refresh result ${refreshResult}"
-   return "Bearer " + parseJson(refreshResult).access_token;
-}
-
 
 @NonCPS
 private String get(url, access_token = null) {
