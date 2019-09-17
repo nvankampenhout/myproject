@@ -68,6 +68,7 @@ pipeline {
                    withCredentials([usernamePassword(credentialsId: 'brCloud_admin', passwordVariable: 'od2_password', usernameVariable: 'od2_username')]) {
                        access_token = login("${od2_url}/v3/authn/access_token", od2_username, od2_password)
                        echo "access_token: " + access_token
+                       echo "refresh_token: " + refresh_token
                    }
 
                    String projectName = readMavenPom(file: "${workspace}/pom.xml").getArtifactId()
@@ -89,6 +90,7 @@ pipeline {
                    //    access_token = login("${od2_url}/v3/authn/access_token", od2_username, od2_password)
                    //}
                    
+                   echo "*** refresh_token: " + refresh_token
                    if (refresh_token) {
                        echo "*** has refresh token"
                        access_token_valid = verify_token("${od2_url}/v3/authn/verify_token", access_token)
