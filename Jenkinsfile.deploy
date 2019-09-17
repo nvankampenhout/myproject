@@ -67,7 +67,7 @@ pipeline {
                script {
                    withCredentials([usernamePassword(credentialsId: 'brCloud_admin', passwordVariable: 'od2_password', usernameVariable: 'od2_username')]) {
                        loginResponse = login("${od2_url}/v3/authn/access_token", od2_username, od2_password)
-                       access_token = loginResponse.access_token
+                       access_token = "Bearer " + loginResponse.access_token
                        refresh_token = loginResponse.refresh_token
                    }
 
@@ -104,7 +104,7 @@ pipeline {
                        echo "*** need to login"
                        withCredentials([usernamePassword(credentialsId: 'brCloud_admin', passwordVariable: 'od2_password', usernameVariable: 'od2_username')]) {
                            loginResponse = login("${od2_url}/v3/authn/access_token", od2_username, od2_password)
-                           access_token = loginResponse.access_token
+                           access_token = "Bearer " + loginResponse.access_token
                            refresh_token = loginResponse.refresh_token
                            echo "*** access_token: " + access_token
                            echo "*** refresh_token: " + refresh_token
