@@ -128,7 +128,7 @@ private boolean verify_token(url, access_token) {
         echo "Verify access token:"
         verifyResult = get(url, access_token)
         echo "Verify result ${verifyResult}"
-        if (parseJson(verifyResult).errorcode) {
+        if (parseJson(verifyResult).error_code) {
             echo "Token is invalid"
             echo "Error code: " + parseJson(verifyResult).error_code
             echo "Error detail: " + parseJson(verifyResult).error_detail
