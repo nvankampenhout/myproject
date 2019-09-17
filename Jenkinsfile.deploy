@@ -84,11 +84,13 @@ pipeline {
        stage('Deploy') {
            steps{
                script{
-                   authenticated = verify_token("${od2_url}/v3/authn/verify_token", access_token)
-                   echo "Authenticated: " + authenticated
+                   access_token_valid = verify_token("${od2_url}/v3/authn/verify_token", access_token)
                    
-                   withCredentials([usernamePassword(credentialsId: 'brCloud_admin', passwordVariable: 'od2_password', usernameVariable: 'od2_username')]) {
-                       access_token = login("${od2_url}/v3/authn/access_token", od2_username, od2_password)
+                   //withCredentials([usernamePassword(credentialsId: 'brCloud_admin', passwordVariable: 'od2_password', usernameVariable: 'od2_username')]) {
+                   //    access_token = login("${od2_url}/v3/authn/access_token", od2_username, od2_password)
+                   //}
+                   if (!access_token_valid) {
+                       access_token = refresh_token("${od2_url}/v3/authn/refresh_token", refresh_token)
                    }
 
                    echo "Get the environments"
@@ -110,7 +112,7 @@ pipeline {
 }
 
 private String login(url, od2_username, od2_password) {
-   echo "Login to OD2 and obtains token:"
+   echo "Login and obtain access token:"
    def json = "{\"username\": \"${od2_username}\", \"password\": \"${od2_password}\"}"
    loginResult = post(url, json)
    echo "Login result ${loginResult}"
@@ -120,7 +122,7 @@ private String login(url, od2_username, od2_password) {
 
 private boolean verify_token(url, access_token) {
     if (access_token) {
-        echo "Verifying access token"
+        echo "Verify access token:"
         verifyResult = get(url, access_token)
         echo "Verify result ${verifyResult}"
         jsonResult = parseJson(verifyResult)
@@ -136,6 +138,15 @@ private boolean verify_token(url, access_token) {
         return false;
     }
 }
+
+private String refresh_token(url, refresh_token) {
+    echo "Refresh access token:"
+    def json = "{\"refresh_token\": \"${refresh_token}\"}"
+    refreshResult = post(url, json)
+    echo "Refresh result ${loginResult}"
+    return "Bearer " + parseJson(loginResult).access_token;
+}
+ 
 
 @NonCPS
 private String get(url, access_token = null) {
