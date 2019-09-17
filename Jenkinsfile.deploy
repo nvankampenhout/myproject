@@ -54,12 +54,12 @@ pipeline {
            steps {
                // Run the maven build
                echo "Package the distribution:"
-               withMaven(
-                       maven: 'M3',
-                       options: [artifactsPublisher(disabled: true)],
-                       mavenSettingsConfig: mavenSettingsID) {
-                   sh '$MVN_CMD verify && $MVN_CMD -P dist'
-               }
+               //withMaven(
+               //        maven: 'M3',
+               //        options: [artifactsPublisher(disabled: true)],
+               //        mavenSettingsConfig: mavenSettingsID) {
+               //    sh '$MVN_CMD verify && $MVN_CMD -P dist'
+               //}
            }
        }
        stage(Upload) {
@@ -85,14 +85,14 @@ pipeline {
        stage('Deploy') {
            steps{
                script{
-                   access_token_valid = verify_token("${od2_url}/v3/authn/verify_token", access_token)
+                   withCredentials([usernamePassword(credentialsId: 'brCloud_admin', passwordVariable: 'od2_password', usernameVariable: 'od2_username')]) {
+                       access_token = login("${od2_url}/v3/authn/access_token", od2_username, od2_password)
+                   }
                    
-                   //withCredentials([usernamePassword(credentialsId: 'brCloud_admin', passwordVariable: 'od2_password', usernameVariable: 'od2_username')]) {
-                   //    access_token = login("${od2_url}/v3/authn/access_token", od2_username, od2_password)
-                   //}
+                   //access_token_valid = verify_token("${od2_url}/v3/authn/verify_token", access_token)
                    //if (!access_token_valid) {
-                       access_token = refresh_token("${od2_url}/v3/authn/refresh_token", refresh_token)
-                       echo "access_token: " + access_token
+                   //    access_token = refresh_token("${od2_url}/v3/authn/refresh_token", refresh_token)
+                   //    echo "access_token: " + access_token
                    //}
 
                    echo "Get the environments"
