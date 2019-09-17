@@ -121,9 +121,15 @@ private String login(url, od2_username, od2_password) {
 private boolean verify_token(url, access_token) {
     if (access_token) {
         echo "Verifying access token"
-        def json = "{\"Authorization\": \"${access_token}\"}"
-        verifyResult = get(url, json)
+        verifyResult = get(url, access_token)
         echo "Verify result ${verifyResult}"
+        jsonResult = parseJson(verifyResult)
+        if (jsonResult) {
+            echo "Error code: " + jsonResult.error_code
+            echo "Error detail: " + jsonResult.error_detail
+            return false;
+        }
+        Echo "Access token is valid"
         return true;
     } else {
         echo "Invalid access token"
