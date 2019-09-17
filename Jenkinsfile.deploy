@@ -1,7 +1,5 @@
 import groovy.json.JsonSlurper
 
-//def refresh_token
-
 pipeline {
    agent any
 
@@ -54,12 +52,12 @@ pipeline {
            steps {
                // Run the maven build
                echo "Package the distribution:"
-               //withMaven(
-               //        maven: 'M3',
-               //        options: [artifactsPublisher(disabled: true)],
-               //        mavenSettingsConfig: mavenSettingsID) {
-               //    sh '$MVN_CMD verify && $MVN_CMD -P dist'
-               //}
+               withMaven(
+                       maven: 'M3',
+                       options: [artifactsPublisher(disabled: true)],
+                       mavenSettingsConfig: mavenSettingsID) {
+                   sh '$MVN_CMD verify && $MVN_CMD -P dist'
+               }
            }
        }
        stage(Upload) {
@@ -69,22 +67,16 @@ pipeline {
                        loginResponse = login("${od2_url}/v3/authn/access_token", od2_username, od2_password)
                    }
 
-                   echo "*** loginResponse: " + loginResponse
                    access_token = "Bearer " + parseJson(loginResponse).access_token
-                   echo "*** access_token: " + access_token
                    refresh_token = parseJson(loginResponse).refresh_token
-                   echo "*** refresh_token: " + refresh_token
-
-                   echo "*** yo"
 
                    String projectName = readMavenPom(file: "${workspace}/pom.xml").getArtifactId()
                    String projectVersion = readMavenPom(file: "${workspace}/pom.xml").getVersion()
                    String distribution = "target/${projectName}-${projectVersion}-distribution.tar.gz"
                    echo "Upload the distribution ${distribution}"
-                   //uploadResult = postMultipart("${od2_url}/v3/distributions/", "dist_file", "${workspace}/${distribution}", access_token)
-                   //echo "Upload result: ${uploadResult}"
-                   //distID = parseJson(uploadResult).id
-                   distID = "18ab349e-2d9c-4139-84bd-e927901e0a30"
+                   uploadResult = postMultipart("${od2_url}/v3/distributions/", "dist_file", "${workspace}/${distribution}", access_token)
+                   echo "Upload result: ${uploadResult}"
+                   distID = parseJson(uploadResult).id
                    echo "distID: ${distID}"
                }
            }
@@ -92,30 +84,17 @@ pipeline {
        stage('Deploy') {
            steps{
                script{
-                   echo "*** DEPLOY"
-                   //withCredentials([usernamePassword(credentialsId: 'brCloud_admin', passwordVariable: 'od2_password', usernameVariable: 'od2_username')]) {
-                   //    access_token = login("${od2_url}/v3/authn/access_token", od2_username, od2_password)
-                   //}
-                   
-                   //echo "*** refresh_token: " + refresh_token
                    if (refresh_token) {
-                       echo "*** has refresh token"
                        access_token_valid = verify_token("${od2_url}/v3/authn/verify_token", access_token)
-                       echo "*** token valid " + access_token_valid
                        if (!access_token_valid) {
-                           echo "*** need to refresh token"
                            access_token = refresh_token("${od2_url}/v3/authn/refresh_token", refresh_token)
-                           echo "*** access_token: " + access_token
                        }
                    } else {
-                       echo "*** need to login"
                        withCredentials([usernamePassword(credentialsId: 'brCloud_admin', passwordVariable: 'od2_password', usernameVariable: 'od2_username')]) {
                            loginResponse = login("${od2_url}/v3/authn/access_token", od2_username, od2_password)
                        }
                        access_token = "Bearer " + parseJson(loginResponse).access_token
                        refresh_token = parseJson(loginResponse).refresh_token
-                       echo "*** access_token: " + access_token
-                       echo "*** refresh_token: " + refresh_token
                    }
 
                    echo "Get the environments"
@@ -141,8 +120,6 @@ private String login(url, od2_username, od2_password) {
    def json = "{\"username\": \"${od2_username}\", \"password\": \"${od2_password}\"}"
    loginResult = post(url, json)
    echo "Login result ${loginResult}"
-   //refresh_token = parseJson(loginResult).refresh_token;
-   //return "Bearer " + parseJson(loginResult).access_token;
    return loginResult
 }
 
