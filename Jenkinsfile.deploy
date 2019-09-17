@@ -122,7 +122,7 @@ private boolean verify_token(url, access_token) {
     if (access_token) {
         echo "Verifying access token"
         def json = "{\"Authorization\": \"${access_token}\"}"
-        verifyResult = post(url, json)
+        verifyResult = get(url, json)
         echo "Verify result ${verifyResult}"
         return true;
     } else {
