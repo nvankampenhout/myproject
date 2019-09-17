@@ -67,8 +67,10 @@ pipeline {
                script {
                    withCredentials([usernamePassword(credentialsId: 'brCloud_admin', passwordVariable: 'od2_password', usernameVariable: 'od2_username')]) {
                        loginResponse = login("${od2_url}/v3/authn/access_token", od2_username, od2_password)
+                       echo "*** loginResponse: " + loginResponse
                        access_token = "Bearer " + loginResponse.access_token
-                       refresh_token = loginResponse.refresh_token
+                       echo "*** access_token: " + access_token
+                       //refresh_token = loginResponse.refresh_token
                    }
 
                    String projectName = readMavenPom(file: "${workspace}/pom.xml").getArtifactId()
@@ -105,9 +107,9 @@ pipeline {
                        withCredentials([usernamePassword(credentialsId: 'brCloud_admin', passwordVariable: 'od2_password', usernameVariable: 'od2_username')]) {
                            loginResponse = login("${od2_url}/v3/authn/access_token", od2_username, od2_password)
                            access_token = "Bearer " + loginResponse.access_token
-                           refresh_token = loginResponse.refresh_token
+                           //refresh_token = loginResponse.refresh_token
                            echo "*** access_token: " + access_token
-                           echo "*** refresh_token: " + refresh_token
+                           //echo "*** refresh_token: " + refresh_token
                        }
                    }
 
@@ -146,6 +148,7 @@ private boolean verify_token(url, access_token) {
         echo "Verify result ${verifyResult}"
         jsonResult = parseJson(verifyResult)
         if (jsonResult) {
+            echo "Token is invalid"
             echo "Error code: " + jsonResult.error_code
             echo "Error detail: " + jsonResult.error_detail
             return false;
@@ -153,7 +156,7 @@ private boolean verify_token(url, access_token) {
         echo "Access token is valid"
         return true;
     } else {
-        echo "Invalid access token"
+        echo "Access token is null"
         return false;
     }
 }
