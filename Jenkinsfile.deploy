@@ -144,9 +144,9 @@ private boolean verify_token(url, access_token) {
 
 private String refresh_token(url, refresh_token) {
     echo "Refresh access token:"
-    def json = "{\"grant_type\": \"${refresh_token}\", \"refresh_token\": \"${refresh_token}\"}"
+    def json = "{\"grant_type\": \"refresh_token\", \"refresh_token\": \"${refresh_token}\"}"
     refreshResult = post(url, json)
-    echo "Refresh result ${loginResult}"
+    echo "Refresh result ${refreshResult}"
     return "Bearer " + parseJson(loginResult).access_token;
 }
  
