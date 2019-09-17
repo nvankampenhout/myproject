@@ -70,9 +70,9 @@ pipeline {
                    }
 
                    echo "*** loginResponse: " + loginResponse
-                   access_token = "Bearer " + loginResponse.access_token
+                   access_token = "Bearer " + parseJson(loginResponse).access_token
                    echo "*** access_token: " + access_token
-                   refresh_token = loginResponse.refresh_token
+                   refresh_token = parseJson(loginResponse).refresh_token
                    echo "*** refresh_token: " + refresh_token
 
                    echo "*** yo"
@@ -112,8 +112,8 @@ pipeline {
                        withCredentials([usernamePassword(credentialsId: 'brCloud_admin', passwordVariable: 'od2_password', usernameVariable: 'od2_username')]) {
                            loginResponse = login("${od2_url}/v3/authn/access_token", od2_username, od2_password)
                        }
-                       access_token = "Bearer " + loginResponse.access_token
-                       refresh_token = loginResponse.refresh_token
+                       access_token = "Bearer " + parseJson(loginResponse).access_token
+                       refresh_token = parseJson(loginResponse).refresh_token
                        echo "*** access_token: " + access_token
                        echo "*** refresh_token: " + refresh_token
                    }
@@ -136,14 +136,14 @@ pipeline {
    }
 }
 
-private Object login(url, od2_username, od2_password) {
+private String login(url, od2_username, od2_password) {
    echo "Login and obtain access token:"
    def json = "{\"username\": \"${od2_username}\", \"password\": \"${od2_password}\"}"
    loginResult = post(url, json)
    echo "Login result ${loginResult}"
    //refresh_token = parseJson(loginResult).refresh_token;
    //return "Bearer " + parseJson(loginResult).access_token;
-   return parseJson(loginResult)
+   return loginResult
 }
 
 private boolean verify_token(url, access_token) {
