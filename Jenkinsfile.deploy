@@ -71,9 +71,10 @@ pipeline {
                    String projectVersion = readMavenPom(file: "${workspace}/pom.xml").getVersion()
                    String distribution = "target/${projectName}-${projectVersion}-distribution.tar.gz"
                    echo "Upload the distribution ${distribution}"
-                   uploadResult = postMultipart("${od2_url}/v3/distributions/", "dist_file", "${workspace}/${distribution}", access_token)
-                   echo "Upload result: ${uploadResult}"
-                   distID = parseJson(uploadResult).id
+                   //uploadResult = postMultipart("${od2_url}/v3/distributions/", "dist_file", "${workspace}/${distribution}", access_token)
+                   //echo "Upload result: ${uploadResult}"
+                   //distID = parseJson(uploadResult).id
+                   distID = "18ab349e-2d9c-4139-84bd-e927901e0a30"
                    echo "distID: ${distID}"
                }
            }
