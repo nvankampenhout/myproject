@@ -129,7 +129,7 @@ private boolean verify_token(url, access_token) {
             echo "Error detail: " + jsonResult.error_detail
             return false;
         }
-        Echo "Access token is valid"
+        echo "Access token is valid"
         return true;
     } else {
         echo "Invalid access token"
