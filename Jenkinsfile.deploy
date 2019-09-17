@@ -1,6 +1,6 @@
 import groovy.json.JsonSlurper
 
-def refresh_token
+//def refresh_token
 
 pipeline {
    agent any
@@ -66,9 +66,9 @@ pipeline {
            steps {
                script {
                    withCredentials([usernamePassword(credentialsId: 'brCloud_admin', passwordVariable: 'od2_password', usernameVariable: 'od2_username')]) {
-                       access_token = login("${od2_url}/v3/authn/access_token", od2_username, od2_password)
-                       echo "access_token: " + access_token
-                       echo "refresh_token: " + refresh_token
+                       loginResponse = login("${od2_url}/v3/authn/access_token", od2_username, od2_password)
+                       access_token = loginResponse.access_token
+                       refresh_token = loginResponse.refresh_token
                    }
 
                    String projectName = readMavenPom(file: "${workspace}/pom.xml").getArtifactId()
@@ -103,8 +103,11 @@ pipeline {
                    } else {
                        echo "*** need to login"
                        withCredentials([usernamePassword(credentialsId: 'brCloud_admin', passwordVariable: 'od2_password', usernameVariable: 'od2_username')]) {
-                           access_token = login("${od2_url}/v3/authn/access_token", od2_username, od2_password)
+                           loginResponse = login("${od2_url}/v3/authn/access_token", od2_username, od2_password)
+                           access_token = loginResponse.access_token
+                           refresh_token = loginResponse.refresh_token
                            echo "*** access_token: " + access_token
+                           echo "*** refresh_token: " + refresh_token
                        }
                    }
 
@@ -126,13 +129,14 @@ pipeline {
    }
 }
 
-private String login(url, od2_username, od2_password) {
+private Object login(url, od2_username, od2_password) {
    echo "Login and obtain access token:"
    def json = "{\"username\": \"${od2_username}\", \"password\": \"${od2_password}\"}"
    loginResult = post(url, json)
    echo "Login result ${loginResult}"
-   refresh_token = parseJson(loginResult).refresh_token;
-   return "Bearer " + parseJson(loginResult).access_token;
+   //refresh_token = parseJson(loginResult).refresh_token;
+   //return "Bearer " + parseJson(loginResult).access_token;
+   return parseJson(loginResult)
 }
 
 private boolean verify_token(url, access_token) {
