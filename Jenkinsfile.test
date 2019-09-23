@@ -6,9 +6,9 @@ pipeline {
    environment {
 
        // Setup variables for the deployment
-       od_stack = "brc-3775"
-       od2_environment = "myproject"
-       od2_url = "https://api-${od_stack}.onehippo.io"
+       brc_stack = "brc-3775"
+       brc_environment = "myproject"
+       brc_url = "https://api-${brc_stack}.onehippo.io"
 
    }
 
@@ -17,20 +17,20 @@ pipeline {
            steps {
                script {
                    // Login to get the access token
-                   echo "Login to OD2 and obtains token:"
-                   withCredentials([usernamePassword(credentialsId: 'brCloud_admin', passwordVariable: 'od2_password', usernameVariable: 'od2_username')]) {
-                       def json = "{\"username\": \"${od2_username}\", \"password\": \"${od2_password}\"}"
-                       loginResult = post("${od2_url}/v3/authn/access_token", json)
+                   echo "Login to br and obtains token:"
+                   withCredentials([usernamePassword(credentialsId: 'brCloud_admin', passwordVariable: 'brc_password', usernameVariable: 'brc_username')]) {
+                       def json = "{\"username\": \"${brc_username}\", \"password\": \"${brc_password}\"}"
+                       loginResult = post("${brc_url}/v3/authn/access_token", json)
                    }
                    echo "Login result ${loginResult}"
                    String access_token = "Bearer " + parseJson(loginResult).access_token
 
                    // Get the environment ID
                    echo "Get the environments"
-                   environments = get("${od2_url}/v3/environments/", access_token)
+                   environments = get("${brc_url}/v3/environments/", access_token)
 
-                   // We require an exising environment. Alternative is to delete/create one
-                   def environmentID = getEnvironmentID(environments, od2_environment)
+                   // We require an existing environment. Alternative is to delete/create one
+                   def environmentID = getEnvironmentID(environments, brc_environment)
                    echo "Environments result: ${environments}"
                    echo "Environment ID: ${environmentID}"
                }
@@ -66,10 +66,10 @@ def parseJson(text) {
 }
 
 @NonCPS
-def getEnvironmentID(environments, od2_environment) {
+def getEnvironmentID(environments, brc_environment) {
    result = null
    parseJson(environments).items.each() { env ->
-       if(env.name.toString() == od2_environment) {
+       if(env.name.toString() == brc_environment) {
            result = env.id
        }
    }

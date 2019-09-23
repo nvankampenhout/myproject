@@ -7,12 +7,12 @@ pipeline {
        mavenSettingsID = 'maven-id-bloomreach-cloud'
 
        // Setup variables for the deployment
-       od_stack = "brc-3775"
-       od2_environment = "myproject"
-       od2_url = "https://api-${od_stack}.onehippo.io"
+       brc_stack = "brc-3775"
+       brc_environment = "myproject"
+       brc_url = "https://api-${brc_stack}.onehippo.io"
 
-       deployed_site = "https://${od2_environment}-${od_stack}.onehippo.io/site/"
-       deployed_cms = "https://${od2_environment}-${od_stack}.onehippo.io/cms/"
+       deployed_site = "https://${brc_environment}-${brc_stack}.onehippo.io/site/"
+       deployed_cms = "https://${brc_environment}-${brc_stack}.onehippo.io/cms/"
 
    }
 
@@ -63,8 +63,8 @@ pipeline {
        stage(Upload) {
            steps {
                script {
-                   withCredentials([usernamePassword(credentialsId: 'brCloud_admin', passwordVariable: 'od2_password', usernameVariable: 'od2_username')]) {
-                       loginResponse = login("${od2_url}/v3/authn/access_token", od2_username, od2_password)
+                   withCredentials([usernamePassword(credentialsId: 'brCloud_admin', passwordVariable: 'brc_password', usernameVariable: 'brc_username')]) {
+                       loginResponse = login("${brc_url}/v3/authn/access_token", brc_username, brc_password)
                    }
 
                    access_token = "Bearer " + parseJson(loginResponse).access_token
@@ -74,7 +74,7 @@ pipeline {
                    String projectVersion = readMavenPom(file: "${workspace}/pom.xml").getVersion()
                    String distribution = "target/${projectName}-${projectVersion}-distribution.tar.gz"
                    echo "Upload the distribution ${distribution}"
-                   uploadResult = postMultipart("${od2_url}/v3/distributions/", "dist_file", "${workspace}/${distribution}", access_token)
+                   uploadResult = postMultipart("${brc_url}/v3/distributions/", "dist_file", "${workspace}/${distribution}", access_token)
                    echo "Upload result: ${uploadResult}"
                    distID = parseJson(uploadResult).id
                    echo "distID: ${distID}"
@@ -85,29 +85,29 @@ pipeline {
            steps{
                script{
                    if (refresh_token) {
-                       access_token_valid = verify_token("${od2_url}/v3/authn/verify_token", access_token)
+                       access_token_valid = verify_token("${brc_url}/v3/authn/verify_token", access_token)
                        if (!access_token_valid) {
-                           access_token = refresh_token("${od2_url}/v3/authn/refresh_token", refresh_token)
+                           access_token = refresh_token("${brc_url}/v3/authn/refresh_token", refresh_token)
                        }
                    } else {
-                       withCredentials([usernamePassword(credentialsId: 'brCloud_admin', passwordVariable: 'od2_password', usernameVariable: 'od2_username')]) {
-                           loginResponse = login("${od2_url}/v3/authn/access_token", od2_username, od2_password)
+                       withCredentials([usernamePassword(credentialsId: 'brCloud_admin', passwordVariable: 'brc_password', usernameVariable: 'brc_username')]) {
+                           loginResponse = login("${brc_url}/v3/authn/access_token", brc_username, brc_password)
                        }
                        access_token = "Bearer " + parseJson(loginResponse).access_token
                        refresh_token = parseJson(loginResponse).refresh_token
                    }
 
                    echo "Get the environments"
-                   environments = get("${od2_url}/v3/environments/", access_token)
+                   environments = get("${brc_url}/v3/environments/", access_token)
                    echo "environments: ${environments}"
 
-                   def environmentID = getEnvironmentID(environments, od2_environment)
+                   def environmentID = getEnvironmentID(environments, brc_environment)
                    echo "Environment ID: ${environmentID}"
 
                    // Deploy the distribution to the environment
                    echo "Deploy distribution"
                    json = "{\"distributionId\": \"${distID}\", \"strategy\": \"stopstart\"}"
-                   deployResult = put("${od2_url}/v3/environments/${environmentID}/deploy", json, access_token)
+                   deployResult = put("${brc_url}/v3/environments/${environmentID}/deploy", json, access_token)
                    echo "Result of deploy: ${deployResult}"
                }
            }
@@ -115,9 +115,9 @@ pipeline {
    }
 }
 
-private String login(url, od2_username, od2_password) {
+private String login(url, brc_username, brc_password) {
    echo "Login and obtain access token:"
-   def json = "{\"username\": \"${od2_username}\", \"password\": \"${od2_password}\"}"
+   def json = "{\"username\": \"${brc_username}\", \"password\": \"${brc_password}\"}"
    loginResult = post(url, json)
    echo "Login result ${loginResult}"
    return loginResult
@@ -194,10 +194,10 @@ def parseJson(text) {
 
 
 @NonCPS
-def getEnvironmentID(environments, od2_environment) {
+def getEnvironmentID(environments, brc_environment) {
    result = null
    parseJson(environments).items.each() { env ->
-       if(env.name.toString() == od2_environment) {
+       if(env.name.toString() == brc_environment) {
            result = env.id
        }
    }
