@@ -1,0 +1,205 @@
+import groovy.json.JsonSlurper
+
+pipeline {
+   agent any
+
+   environment {
+       mavenSettingsID = 'maven-id-bloomreach-cloud'
+
+       // Setup variables for the deployment
+       od_stack = "brc-3775"
+       od2_environment = "myproject"
+       od2_url = "https://api-${od_stack}.onehippo.io"
+
+       deployed_site = "https://${od2_environment}-${od_stack}.onehippo.io/site/"
+       deployed_cms = "https://${od2_environment}-${od_stack}.onehippo.io/cms/"
+
+   }
+
+   stages {
+       stage('Prepare') {
+           steps {
+               echo "=== Build Environment ================"
+               sh "java -version && javac -version"
+               echo "======================================"
+           }
+       }
+       stage('Compile') {
+           steps {
+               // Run the maven build
+               echo "Build the project:"
+               withMaven(
+                       maven: 'M3',
+                       options: [artifactsPublisher(disabled: true)],
+                       mavenSettingsConfig: mavenSettingsID) {
+                   sh '$MVN_CMD clean compile -Pdefault'
+               }
+           }
+       }
+       stage('Unit test') {
+           steps {
+               // Run the maven build
+               echo "Execute tests:"
+               withMaven(
+                       maven: 'M3',
+                       options: [artifactsPublisher(disabled: true)],
+                       mavenSettingsConfig: mavenSettingsID) {
+                   sh '$MVN_CMD test -Pdefault'
+               }
+           }
+       }
+       stage('Package') {
+           steps {
+               // Run the maven build
+               echo "Package the distribution:"
+               withMaven(
+                       maven: 'M3',
+                       options: [artifactsPublisher(disabled: true)],
+                       mavenSettingsConfig: mavenSettingsID) {
+                   sh '$MVN_CMD verify && $MVN_CMD -P dist'
+               }
+           }
+       }
+       stage(Upload) {
+           steps {
+               script {
+                   withCredentials([usernamePassword(credentialsId: 'brCloud_admin', passwordVariable: 'od2_password', usernameVariable: 'od2_username')]) {
+                       loginResponse = login("${od2_url}/v3/authn/access_token", od2_username, od2_password)
+                   }
+
+                   access_token = "Bearer " + parseJson(loginResponse).access_token
+                   refresh_token = parseJson(loginResponse).refresh_token
+
+                   String projectName = readMavenPom(file: "${workspace}/pom.xml").getArtifactId()
+                   String projectVersion = readMavenPom(file: "${workspace}/pom.xml").getVersion()
+                   String distribution = "target/${projectName}-${projectVersion}-distribution.tar.gz"
+                   echo "Upload the distribution ${distribution}"
+                   uploadResult = postMultipart("${od2_url}/v3/distributions/", "dist_file", "${workspace}/${distribution}", access_token)
+                   echo "Upload result: ${uploadResult}"
+                   distID = parseJson(uploadResult).id
+                   echo "distID: ${distID}"
+               }
+           }
+       }
+       stage('Deploy') {
+           steps{
+               script{
+                   if (refresh_token) {
+                       access_token_valid = verify_token("${od2_url}/v3/authn/verify_token", access_token)
+                       if (!access_token_valid) {
+                           access_token = refresh_token("${od2_url}/v3/authn/refresh_token", refresh_token)
+                       }
+                   } else {
+                       withCredentials([usernamePassword(credentialsId: 'brCloud_admin', passwordVariable: 'od2_password', usernameVariable: 'od2_username')]) {
+                           loginResponse = login("${od2_url}/v3/authn/access_token", od2_username, od2_password)
+                       }
+                       access_token = "Bearer " + parseJson(loginResponse).access_token
+                       refresh_token = parseJson(loginResponse).refresh_token
+                   }
+
+                   echo "Get the environments"
+                   environments = get("${od2_url}/v3/environments/", access_token)
+                   echo "environments: ${environments}"
+
+                   def environmentID = getEnvironmentID(environments, od2_environment)
+                   echo "Environment ID: ${environmentID}"
+
+                   // Deploy the distribution to the environment
+                   echo "Deploy distribution"
+                   json = "{\"distributionId\": \"${distID}\", \"strategy\": \"stopstart\"}"
+                   deployResult = put("${od2_url}/v3/environments/${environmentID}/deploy", json, access_token)
+                   echo "Result of deploy: ${deployResult}"
+               }
+           }
+       }
+   }
+}
+
+private String login(url, od2_username, od2_password) {
+   echo "Login and obtain access token:"
+   def json = "{\"username\": \"${od2_username}\", \"password\": \"${od2_password}\"}"
+   loginResult = post(url, json)
+   echo "Login result ${loginResult}"
+   return loginResult
+}
+
+private boolean verify_token(url, access_token) {
+    if (access_token) {
+        echo "Verify access token:"
+        verifyResult = get(url, access_token)
+        echo "Verify result ${verifyResult}"
+        if (parseJson(verifyResult).error_code) {
+            echo "Token is invalid"
+            echo "Error code: " + parseJson(verifyResult).error_code
+            echo "Error detail: " + parseJson(verifyResult).error_detail
+            return false;
+        }
+        echo "Access token is valid"
+        return true;
+    } else {
+        echo "Access token is null"
+        return false;
+    }
+}
+
+private String refresh_token(url, refresh_token) {
+    echo "Refresh access token:"
+    def json = "{\"grant_type\": \"refresh_token\", \"refresh_token\": \"${refresh_token}\"}"
+    refreshResult = post(url, json)
+    echo "Refresh result ${refreshResult}"
+    return "Bearer " + parseJson(refreshResult).access_token;
+}
+ 
+
+@NonCPS
+private String get(url, access_token = null) {
+   return curl("GET", url, access_token)
+}
+
+@NonCPS
+private String post(url, json, access_token = null) {
+   return curl("POST", url, access_token, json)
+}
+
+@NonCPS
+private String postMultipart(url, String fileName, file, String access_token = null) {
+   return curl("POST", url, access_token, null, fileName, file, null, "multipart/form-data")
+}
+
+@NonCPS
+private String put(url, json, String access_token = null) {
+   return curl("PUT", url, access_token, json, null, null, "-i --http1.1")
+}
+
+@NonCPS
+private String  delete(url, access_token = null) {
+   return curl("DELETE", url, access_token, null, null, null, "--http1.1")
+}
+
+@NonCPS
+private String curl(method, url, access_token, json = null, fileName = null, file = null, extraParams = null, contentType = "application/json") {
+   return sh(script: "curl ${extraParams?:""} \
+           -X ${method} '${url}' \
+           ${access_token?"-H 'Authorization: ${access_token}'":""} \
+           -H 'Content-Type: ${contentType}' \
+           ${json?"-d '${json}'":""} \
+           ${(fileName && file)?"-F '${fileName}=@${file}'":""}",
+           returnStdout: true)
+}
+
+@NonCPS
+def parseJson(text) {
+   return new JsonSlurper().parseText(text)
+}
+
+
+@NonCPS
+def getEnvironmentID(environments, od2_environment) {
+   result = null
+   parseJson(environments).items.each() { env ->
+       if(env.name.toString() == od2_environment) {
+           result = env.id
+       }
+   }
+   return result
+}
